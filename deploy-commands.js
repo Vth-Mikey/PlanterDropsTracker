@@ -7,7 +7,10 @@ const commands = [
         .setDescription('Open the Planter Logbook to track drops'),
     new SlashCommandBuilder()
         .setName('backup')
-        .setDescription('Receive a copy of the current logs.json file via DM')
+        .setDescription('Receive a copy of the current logs.json file via DM'),
+    new SlashCommandBuilder()
+        .setName('stats')
+        .setDescription('View global bot statistics (Owner Only)')
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN

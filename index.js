@@ -162,10 +162,13 @@ client.on('interactionCreate', async (i) => {
 
     // --- 1. HANDLE SLASH COMMANDS ---
     if (i.isChatInputCommand()) {
+        
+        // --- LOGBOOK COMMAND ---
         if (i.commandName === 'logbook') {
             return await i.reply(getMainMenu());
         }
 
+        // --- BACKUP COMMAND ---
         if (i.commandName === 'backup') {
             try {
                 if (!fs.existsSync(LOG_FILE)) {
@@ -179,12 +182,39 @@ client.on('interactionCreate', async (i) => {
                 return i.reply({ content: "❌ I couldn't DM you! Please make sure your DMs are open for this server.", ephemeral: true });
             }
         }
-    }
 
+        // --- STATS COMMAND (OWNER ONLY) ---
+        if (i.commandName === 'stats') {
+            const OWNER_ID = '745969345749975097'; 
+
+            if (i.user.id !== OWNER_ID) {
+                return await i.reply({ content: "❌ **Access Denied:** This command is restricted to the bot owner.", ephemeral: true });
+            }
+
+            const logs = loadLogs();
+            const totalUsers = Object.keys(logs).length;
+            let totalTrackers = 0;
+
+            Object.values(logs).forEach(userFolder => {
+                totalTrackers += Object.keys(userFolder).length;
+            });
+
+            const statsEmbed = new EmbedBuilder()
+                .setTitle('📊 Global Bot Statistics')
+                .addFields(
+                    { name: '👥 Total Users', value: `${totalUsers}`, inline: true },
+                    { name: '🌱 Active Trackers', value: `${totalTrackers}`, inline: true },
+                    { name: '🛰️ Server Status', value: 'Online (Oracle Cloud)', inline: false }
+                )
+                .setColor('#f1c40f')
+                .setTimestamp();
+
+            return await i.reply({ embeds: [statsEmbed], ephemeral: true });
+        }
+    }
+    
     // --- 2. HANDLE BUTTONS & MENUS ---
     try {
-        // ... the rest of your button/menu code starts here ...
-
         if (i.isButton() && i.customId === 'back_to_main') {
             await i.deferUpdate(); await i.editReply(getMainMenu());
         }
@@ -237,7 +267,6 @@ client.on('interactionCreate', async (i) => {
             await i.editReply({ embeds: [new EmbedBuilder().setTitle('📊 Active Drops Trackers').setDescription(txt || "No active trackers!").setColor('#9b59b6')], components: [row] });
         }
 
-        // --- SELECTIVE REMOVAL INTERACTION ---
         if (i.isButton() && i.customId === 'rem_drop_menu') {
             await i.deferUpdate();
             let activeDrops = [];
