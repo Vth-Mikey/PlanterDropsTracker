@@ -159,9 +159,32 @@ client.once('ready', () => { console.log(`✅ Online: ${client.user.tag}`); setI
 
 client.on('interactionCreate', async (i) => {
     const u = i.user.id;
-    if (i.isChatInputCommand() && i.commandName === 'logbook') await i.reply(getMainMenu());
 
+    // --- 1. HANDLE SLASH COMMANDS ---
+    if (i.isChatInputCommand()) {
+        if (i.commandName === 'logbook') {
+            return await i.reply(getMainMenu());
+        }
+
+        if (i.commandName === 'backup') {
+            try {
+                if (!fs.existsSync(LOG_FILE)) {
+                    return i.reply({ content: "❌ No logs found yet! Start tracking a planter first.", ephemeral: true });
+                }
+                const attachment = new AttachmentBuilder(LOG_FILE);
+                await i.user.send({ content: "📦 **Planter Logbook Backup**\nKeep this file safe!", files: [attachment] });
+                return i.reply({ content: "✅ Check your DMs! I've sent you the `logs.json` file.", ephemeral: true });
+            } catch (error) {
+                console.error(error);
+                return i.reply({ content: "❌ I couldn't DM you! Please make sure your DMs are open for this server.", ephemeral: true });
+            }
+        }
+    }
+
+    // --- 2. HANDLE BUTTONS & MENUS ---
     try {
+        // ... the rest of your button/menu code starts here ...
+
         if (i.isButton() && i.customId === 'back_to_main') {
             await i.deferUpdate(); await i.editReply(getMainMenu());
         }
