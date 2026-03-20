@@ -1,0 +1,57 @@
+{
+  "hyd_oil": 1777021155272,
+  "heat_red": 1777021041881,
+  "hyd_blue": 1777021185848,
+  "745969345749975097": {
+    "hyd_blue": {
+      "time": 1777030411848,
+      "channelId": "938914993586466888",
+      "notified": false
+    },
+    "hyd_oil": {
+      "time": 1777031135115,
+      "channelId": "938914993586466888",
+      "notified": false
+    },
+    "hyd_wax": {
+      "time": 1777032295432,
+      "channelId": "938914993586466888",
+      "notified": false
+    },
+    "test_item": {
+      "time": 1773924485550,
+      "channelId": "938914993586466888",
+      "notified": true
+    },
+    "heat_red": {
+      "startTime": 1773927269308,
+      "time": 1777037669308,
+      "channelId": "938914993586466888",
+      "notified": false
+    },
+    "plen_smooth": {
+      "startTime": 1773933090386,
+      "time": 1777043490386,
+      "channelId": "938914993586466888",
+      "notified": false
+    },
+    "pest_neon": {
+      "startTime": 1773934666196,
+      "time": 1774539466196,
+      "channelId": "938914993586466888",
+      "notified": false
+    },
+    "can_glue": {
+      "startTime": 1773937478708,
+      "time": 1774542278708,
+      "channelId": "938914993586466888",
+      "notified": false
+    },
+    "hyd_dice": {
+      "startTime": 1773937523654,
+      "time": 1774023923654,
+      "channelId": "938914993586466888",
+      "notified": false
+    }
+  }
+}
