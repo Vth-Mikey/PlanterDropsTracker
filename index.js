@@ -133,6 +133,29 @@ function getMainMenu() {
     return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu), buttons] };
 }
 
+function getEncyclopediaPages() {
+    const pages = [];
+    const planterNames = Object.keys(planterData);
+    
+    planterNames.forEach((pName, index) => {
+        const pEmoji = EMOJI_MAP[pName] || "🐝";
+        let desc = "";
+        
+        planterData[pName].forEach(drop => {
+            const dEmoji = EMOJI_MAP[drop.dropKey] || "";
+            desc += `${dEmoji} **${drop.label}**\n⏳ Cooldown: ${drop.cd} Hours\n📍 Field: ${formatField(drop.field)}\n🌱 Type: ${drop.type}\n\n`;
+        });
+        
+        pages.push(new EmbedBuilder()
+            .setTitle(`${pEmoji} ${pName}`)
+            .setDescription(desc)
+            .setColor('#3498db')
+            .setFooter({ text: `Page ${index + 1} of ${planterNames.length} • Encyclopedia` })
+        );
+    });
+    return pages;
+}
+
 async function checkReminders() {
     const logs = loadLogs(); const now = Date.now(); let updated = false;
     for (const userId in logs) {
@@ -211,10 +234,44 @@ client.on('interactionCreate', async (i) => {
 
             return await i.reply({ embeds: [statsEmbed], ephemeral: true });
         }
+
+        // --- ENCYCLOPEDIA COMMAND ---
+        if (i.commandName === 'encyclopedia') {
+            const pages = getEncyclopediaPages();
+            
+            // Build the buttons for Page 0
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('page_prev_0').setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(true), // Disabled on first page
+                new ButtonBuilder().setCustomId('page_next_0').setEmoji('➡️').setStyle(ButtonStyle.Primary)
+            );
+            
+            return await i.reply({ embeds: [pages[0]], components: [row] });
+        }
     }
     
     // --- 2. HANDLE BUTTONS & MENUS ---
     try {
+        // --- ENCYCLOPEDIA PAGINATION ---
+        if (i.isButton() && i.customId.startsWith('page_')) {
+            const parts = i.customId.split('_'); // Breaks 'page_next_0' into ['page', 'next', '0']
+            const action = parts[1];
+            let currentIndex = parseInt(parts[2]);
+
+            const pages = getEncyclopediaPages();
+            
+            // Calculate what page we are turning to
+            let newIndex = action === 'next' ? currentIndex + 1 : currentIndex - 1;
+
+            // Rebuild the buttons with the new index
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId(`page_prev_${newIndex}`).setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(newIndex === 0),
+                new ButtonBuilder().setCustomId(`page_next_${newIndex}`).setEmoji('➡️').setStyle(ButtonStyle.Primary).setDisabled(newIndex === pages.length - 1)
+            );
+
+            // Update the existing message smoothly
+            return await i.update({ embeds: [pages[newIndex]], components: [row] });
+        }
+
         if (i.isButton() && i.customId === 'back_to_main') {
             await i.deferUpdate(); await i.editReply(getMainMenu());
         }

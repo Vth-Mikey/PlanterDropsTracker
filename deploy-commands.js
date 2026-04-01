@@ -10,11 +10,13 @@ const commands = [
         .setDescription('Receive a copy of the current logs.json file via DM'),
     new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('View global bot statistics (Owner Only)')
+        .setDescription('View global bot statistics (Owner Only)'),
+    new SlashCommandBuilder()
+        .setName('encyclopedia')
+        .setDescription('Browse a book-style guide of all planter drops') // 📖 The new command!
 ].map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN
-     );
+const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
 
 (async () => {
     try {
