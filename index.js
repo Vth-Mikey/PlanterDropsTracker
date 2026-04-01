@@ -143,7 +143,8 @@ function getEncyclopediaPages() {
         
         planterData[pName].forEach(drop => {
             const dEmoji = EMOJI_MAP[drop.dropKey] || "";
-            desc += `${dEmoji} **${drop.label}**\n⏳ Cooldown: ${drop.cd} Hours\n📍 Field: ${formatField(drop.field)}\n🌱 Type: ${drop.type}\n\n`;
+            // Fixed: Now displays correctly as "Days"
+            desc += `${dEmoji} **${drop.label}**\n⏳ Cooldown: ${drop.cd} Days\n📍 Field: ${formatField(drop.field)}\n🌱 Type: ${drop.type}\n\n`;
         });
         
         pages.push(new EmbedBuilder()
@@ -182,189 +183,107 @@ client.once('ready', () => { console.log(`✅ Online: ${client.user.tag}`); setI
 
 client.on('interactionCreate', async (i) => {
     const u = i.user.id;
+    const OWNER_ID = '745969345749975097';
 
-        // --- 1. HANDLE SLASH COMMANDS ---
+    // --- 1. HANDLE SLASH COMMANDS ---
     if (i.isChatInputCommand()) {
         
-        // --- LOGBOOK COMMAND ---
         if (i.commandName === 'logbook') {
             return await i.reply(getMainMenu());
         }
 
-        // --- BACKUP COMMAND ---
         if (i.commandName === 'backup') {
             try {
                 if (!fs.existsSync(LOG_FILE)) {
-                    return i.reply({ content: "❌ No logs found yet! Start tracking a planter first.", ephemeral: true });
+                    return i.reply({ content: "❌ No logs found yet!", ephemeral: true });
                 }
                 const attachment = new AttachmentBuilder(LOG_FILE);
-                await i.user.send({ content: "📦 **Planter Logbook Backup**\nKeep this file safe!", files: [attachment] });
-                return i.reply({ content: "✅ Check your DMs! I've sent you the `logs.json` file.", ephemeral: true });
+                await i.user.send({ content: "📦 **Planter Logbook Backup**", files: [attachment] });
+                return i.reply({ content: "✅ Check your DMs!", ephemeral: true });
             } catch (error) {
-                console.error(error);
-                return i.reply({ content: "❌ I couldn't DM you! Please make sure your DMs are open for this server.", ephemeral: true });
+                return i.reply({ content: "❌ I couldn't DM you!", ephemeral: true });
             }
         }
 
-        // --- STATS COMMAND (OWNER ONLY) ---
         if (i.commandName === 'stats') {
-            const OWNER_ID = '745969345749975097'; 
-
-            if (i.user.id !== OWNER_ID) {
-                return await i.reply({ content: "❌ **Access Denied:** This command is restricted to the bot owner.", ephemeral: true });
-            }
-
+            if (i.user.id !== OWNER_ID) return await i.reply({ content: "❌ Access Denied.", ephemeral: true });
             const logs = loadLogs();
-            const totalUsers = Object.keys(logs).length;
+            const totalUsers = Object.keys(logs).filter(id => !isNaN(id)).length;
             let totalTrackers = 0;
-
-            Object.values(logs).forEach(userFolder => {
-                totalTrackers += Object.keys(userFolder).length;
-            });
+            Object.keys(logs).forEach(id => { if(!isNaN(id)) totalTrackers += Object.keys(logs[id]).length; });
 
             const statsEmbed = new EmbedBuilder()
                 .setTitle('📊 Global Bot Statistics')
                 .addFields(
                     { name: '👥 Total Users', value: `${totalUsers}`, inline: true },
                     { name: '🌱 Active Trackers', value: `${totalTrackers}`, inline: true },
-                    { name: '🛰️ Server Status', value: 'Online (Oracle Cloud)', inline: false }
-                )
-                .setColor('#f1c40f')
-                .setTimestamp();
-
+                    { name: '🛰️ Status', value: 'Online (Oracle Cloud)', inline: false }
+                ).setColor('#f1c40f');
             return await i.reply({ embeds: [statsEmbed], ephemeral: true });
         }
 
-        // --- ENCYCLOPEDIA COMMAND ---
         if (i.commandName === 'encyclopedia') {
             const pages = getEncyclopediaPages();
-            
-            // Build the buttons for Page 0
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('page_prev_0').setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(true), // Disabled on first page
+                new ButtonBuilder().setCustomId('page_prev_0').setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(true),
                 new ButtonBuilder().setCustomId('page_next_0').setEmoji('➡️').setStyle(ButtonStyle.Primary)
             );
-            
             return await i.reply({ embeds: [pages[0]], components: [row] });
         }
 
-        // --- BROADCAST COMMAND (OWNER ONLY) ---
         if (i.commandName === 'broadcast') {
-            const OWNER_ID = '745969345749975097'; 
-
-            if (i.user.id !== OWNER_ID) {
-                return await i.reply({ content: "❌ **Access Denied:** Only the bot owner can send broadcasts.", ephemeral: true });
-            }
-
-            // We defer the reply because sending DMs to multiple people might take a few seconds
+            if (i.user.id !== OWNER_ID) return await i.reply({ content: "❌ Access Denied.", ephemeral: true });
             await i.deferReply({ ephemeral: true });
-
             const messageToDeliver = i.options.getString('message');
             const logs = loadLogs();
-            const userIds = Object.keys(logs); // Gets every unique user ID from the database
-
-            if (userIds.length === 0) {
-                return await i.editReply({ content: "⚠️ No users found in the database to message." });
-            }
-
-            let successCount = 0;
-            let failCount = 0;
-
+            const userIds = Object.keys(logs).filter(id => !isNaN(id));
+            let successCount = 0; let failCount = 0;
             for (const userId of userIds) {
                 try {
                     const user = await client.users.fetch(userId);
                     await user.send(`📢 **Planter Tracker Update:**\n\n${messageToDeliver}`);
                     successCount++;
-                } catch (error) {
-                    // This happens if a user has DMs disabled or blocked the bot
-                    failCount++;
-                }
+                } catch { failCount++; }
             }
-
-            return await i.editReply({ content: `✅ **Broadcast Complete!**\n📬 Delivered to: ${successCount} users\n❌ Failed: ${failCount} users (DMs closed)` });
+            return await i.editReply({ content: `✅ Broadcast Complete! Success: ${successCount}, Failed: ${failCount}` });
         }
         
-                // --- SERVER LIST COMMAND (OWNER ONLY) ---
         if (i.commandName === 'serverlist') {
-            const OWNER_ID = '745969345749975097'; 
-
-            if (i.user.id !== OWNER_ID) {
-                return await i.reply({ content: "❌ **Access Denied:** Only the bot owner can view the server list.", ephemeral: true });
-            }
-
-            // Map through the bot's cache to get server names and member counts
-            const serverList = client.guilds.cache.map((guild, index) => {
+            if (i.user.id !== OWNER_ID) return await i.reply({ content: "❌ Access Denied.", ephemeral: true });
+            const serverList = [...client.guilds.cache.values()].map((guild, index) => {
                 return `**${index + 1}.** ${guild.name} \`[${guild.memberCount} members]\``;
             }).join('\n');
-
-            const embed = new EmbedBuilder()
-                .setTitle('🌐 Connected Servers')
-                .setDescription(serverList || "I am not in any servers right now.")
-                .setColor('#2ecc71')
-                .setFooter({ text: `Total Servers: ${client.guilds.cache.size}` });
-
+            const embed = new EmbedBuilder().setTitle('🌐 Connected Servers').setDescription(serverList || "None").setColor('#2ecc71');
             return await i.reply({ embeds: [embed], ephemeral: true });
         }
         
-        // --- USER LIST COMMAND (OWNER ONLY) ---
         if (i.commandName === 'userlist') {
-            const OWNER_ID = '745969345749975097'; 
-
-            if (i.user.id !== OWNER_ID) {
-                return await i.reply({ content: "❌ **Access Denied.**", ephemeral: true });
-            }
-
+            if (i.user.id !== OWNER_ID) return await i.reply({ content: "❌ Access Denied.", ephemeral: true });
             await i.deferReply({ ephemeral: true });
-
             const logs = loadLogs();
-            const userIds = Object.keys(logs);
-
-            if (userIds.length === 0) {
-                return await i.editReply("⚠️ No users found in the database.");
-            }
-
-            // Fetch the actual usernames for each ID
+            const userIds = Object.keys(logs).filter(id => !isNaN(id));
+            if (userIds.length === 0) return await i.editReply("⚠️ No users found.");
             const userDisplayList = await Promise.all(userIds.map(async (id, index) => {
-                try {
-                    const user = await client.users.fetch(id);
-                    return `**${index + 1}.** <@${id}> | \`${id}\``;
-                } catch {
-                    return `**${index + 1}.** Unknown User \`(${id})\``;
-                }
+                try { const user = await client.users.fetch(id); return `**${index + 1}.** <@${id}> | \`${id}\``; }
+                catch { return `**${index + 1}.** Unknown \`(${id})\``; }
             }));
-
-            const embed = new EmbedBuilder()
-                .setTitle('👥 Bot User Directory')
-                .setDescription(userDisplayList.join('\n'))
-                .setColor('#3498db')
-                .setFooter({ text: `Total Unique Users: ${userIds.length}` });
-
+            const embed = new EmbedBuilder().setTitle('👥 User Directory').setDescription(userDisplayList.join('\n')).setColor('#3498db');
             return await i.editReply({ embeds: [embed] });
         }
+    } 
 
-    } // <--- Notice how this closing brace is now at the very end of all the commands!
-
-            
     // --- 2. HANDLE BUTTONS & MENUS ---
     try {
-        // --- ENCYCLOPEDIA PAGINATION ---
         if (i.isButton() && i.customId.startsWith('page_')) {
-            const parts = i.customId.split('_'); // Breaks 'page_next_0' into ['page', 'next', '0']
+            const parts = i.customId.split('_');
             const action = parts[1];
             let currentIndex = parseInt(parts[2]);
-
             const pages = getEncyclopediaPages();
-            
-            // Calculate what page we are turning to
             let newIndex = action === 'next' ? currentIndex + 1 : currentIndex - 1;
-
-            // Rebuild the buttons with the new index
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`page_prev_${newIndex}`).setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(newIndex === 0),
                 new ButtonBuilder().setCustomId(`page_next_${newIndex}`).setEmoji('➡️').setStyle(ButtonStyle.Primary).setDisabled(newIndex === pages.length - 1)
             );
-
-            // Update the existing message smoothly
             return await i.update({ embeds: [pages[newIndex]], components: [row] });
         }
 
@@ -374,33 +293,30 @@ client.on('interactionCreate', async (i) => {
 
         if (i.isButton() && i.customId === 'guide') {
             if(!i.deferred && !i.replied) await i.deferReply({ flags: [64] });
-            const guideEmbed = new EmbedBuilder()
-                .setTitle('📖 Book Manual: Planter Mechanics').setDescription('Reference guide for your tracking journey:')
-                .addFields(
-                    { name: '📍 1x Plant', value: 'Guaranteed reward after a single full harvest in the listed field.' },
-                    { name: '📍 3x (In a row/Fully Grown)', value: 'Requires a number of planter harvest to unlock the drop' },
-                    { name: '📍 Sequence', value: 'Follow the specific order of fields to claim the drop.' },
-                    { name: '⏳ Reminders', value: 'The bot will ping you automatically when the cooldown of drops refreshed!' }
-                ).setColor('#3498db');
+            const guideEmbed = new EmbedBuilder().setTitle('📖 Manual').setDescription('Guide for tracking:').addFields(
+                { name: '📍 1x Plant', value: 'Single harvest reward.' },
+                { name: '📍 3x', value: 'Requires multiple harvests.' },
+                { name: '📍 Sequence', value: 'Follow the specific field order.' }
+            ).setColor('#3498db');
             await i.editReply({ embeds: [guideEmbed] });
         }
 
         if (i.isStringSelectMenu() && i.customId === 'sel_p') {
             await i.deferUpdate();
             const p = i.values[0], d = planterData[p], pEmoji = EMOJI_MAP[p] || "";
-            const menu = new StringSelectMenuBuilder().setCustomId(`log_${p}`).setPlaceholder('Select the drop...').addOptions(d.map(x => {
-                const eId = EMOJI_MAP[x.dropKey]?.match(/\d+/)?.[0]; return { label: x.label, description: `Field: ${x.field}`, value: x.id, emoji: eId };
+            const menu = new StringSelectMenuBuilder().setCustomId(`log_${p}`).setPlaceholder('Select drop...').addOptions(d.map(x => {
+                const eId = EMOJI_MAP[x.dropKey]?.match(/\d+/)?.[0]; return { label: x.label, value: x.id, emoji: eId };
             }));
-            const backBtn = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('⬅️ Back to Planters').setStyle(ButtonStyle.Secondary));
-            await i.editReply({ embeds: [new EmbedBuilder().setTitle(`${pEmoji} ${p} Information`).setDescription('Choose the drop you are farming:').setColor('#3498db')], components: [new ActionRowBuilder().addComponents(menu), backBtn] });
+            const backBtn = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('⬅️ Back').setStyle(ButtonStyle.Secondary));
+            await i.editReply({ embeds: [new EmbedBuilder().setTitle(`${pEmoji} ${p}`).setColor('#3498db')], components: [new ActionRowBuilder().addComponents(menu), backBtn] });
         }
         
         if (i.isStringSelectMenu() && i.customId.startsWith('log_')) {
             if(!i.deferred && !i.replied) await i.deferReply({ flags: [64] });
             const p = i.customId.replace('log_',''), dId = i.values[0], info = planterData[p].find(x=>x.id===dId), status = getStatus(u, dId);
-            if (status.type === "active") return i.editReply({ content: `⚠️ **Already Tracking!** Cooldown ends: ${status.text}`, embeds: [], components: [] });
+            if (status.type === "active") return i.editReply({ content: `⚠️ Already Tracking! Cooldown ends: ${status.text}`});
             saveLog(u, dId, info.cd, i.channelId); 
-            await i.editReply({ embeds: [new EmbedBuilder().setTitle("✅ Planter Tracked").setDescription(`**Planter:** ${EMOJI_MAP[p]} ${p}\n**Drop:** ${EMOJI_MAP[info.dropKey]} ${info.label}\n**Field:** ${formatField(info.field)}\n**Type:** ${info.type}`).setColor('#2ecc71')], components: [] });
+            await i.editReply({ embeds: [new EmbedBuilder().setTitle("✅ Tracked").setDescription(`**Planter:** ${p}\n**Drop:** ${info.label}\n**Days:** ${info.cd}`).setColor('#2ecc71')], components: [] });
         }
 
         if (i.isButton() && i.customId === 'sum') {
@@ -410,14 +326,14 @@ client.on('interactionCreate', async (i) => {
                 planterData[pn].forEach(dr => { 
                     const s = getStatus(u, dr.id); 
                     if(s.type === "active") { 
-                        txt += `${EMOJI_MAP[pn]} **${pn}** - ${EMOJI_MAP[dr.dropKey]} ${dr.label}\n(Field: ${formatField(dr.field)}, Type: ${dr.type})\n${createBar(s.percent)}\n⏳ Ready: ${s.text}\n\n`;
+                        txt += `${EMOJI_MAP[pn]} **${pn}** - ${dr.label}\n${createBar(s.percent)}\nReady: ${s.text}\n\n`;
                         activeDrops.push({ label: dr.label, value: dr.id, description: pn });
                     }
                 })
             });
             const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('⬅️ Back').setStyle(ButtonStyle.Secondary));
-            if (activeDrops.length > 0) row.addComponents(new ButtonBuilder().setCustomId('rem_drop_menu').setLabel('🗑️ Remove a Tracker').setStyle(ButtonStyle.Danger));
-            await i.editReply({ embeds: [new EmbedBuilder().setTitle('📊 Active Drops Trackers').setDescription(txt || "No active trackers!").setColor('#9b59b6')], components: [row] });
+            if (activeDrops.length > 0) row.addComponents(new ButtonBuilder().setCustomId('rem_drop_menu').setLabel('🗑️ Remove').setStyle(ButtonStyle.Danger));
+            await i.editReply({ embeds: [new EmbedBuilder().setTitle('📊 Active Trackers').setDescription(txt || "No active trackers!").setColor('#9b59b6')], components: [row] });
         }
 
         if (i.isButton() && i.customId === 'rem_drop_menu') {
@@ -426,7 +342,7 @@ client.on('interactionCreate', async (i) => {
             Object.keys(planterData).forEach(pn => { 
                 planterData[pn].forEach(dr => { if(getStatus(u, dr.id).type === "active") activeDrops.push({ label: dr.label, value: dr.id, description: pn }); });
             });
-            const menu = new StringSelectMenuBuilder().setCustomId('delete_drop').setPlaceholder('Select a tracker to remove...').addOptions(activeDrops.slice(0, 25));
+            const menu = new StringSelectMenuBuilder().setCustomId('delete_drop').setPlaceholder('Remove tracker...').addOptions(activeDrops.slice(0, 25));
             await i.editReply({ components: [new ActionRowBuilder().addComponents(menu), new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('⬅️ Back').setStyle(ButtonStyle.Secondary))] });
         }
 
@@ -434,13 +350,13 @@ client.on('interactionCreate', async (i) => {
             await i.deferUpdate();
             const l = loadLogs(); if (l[u]) delete l[u][i.values[0]];
             fs.writeFileSync(LOG_FILE, JSON.stringify(l, null, 2));
-            await i.editReply({ content: "✅ Tracker removed successfully.", embeds: [], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('🏠 Home').setStyle(ButtonStyle.Primary))] });
+            await i.editReply({ content: "✅ Removed.", components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('🏠 Home').setStyle(ButtonStyle.Primary))] });
         }
 
         if (i.isButton() && i.customId === 'res') {
             if(!i.deferred && !i.replied) await i.deferReply({ flags: [64] });
             const l = loadLogs(); delete l[u]; fs.writeFileSync(LOG_FILE, JSON.stringify(l,null,2));
-            await i.editReply({ content: "🗑️ All logs cleared.", embeds: [], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('🏠 Home').setStyle(ButtonStyle.Primary))] });
+            await i.editReply({ content: "🗑️ Logs cleared.", components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('back_to_main').setLabel('🏠 Home').setStyle(ButtonStyle.Primary))] });
         }
     } catch (e) { console.error("Interaction Error:", e); }
 });
