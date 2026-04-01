@@ -120,15 +120,16 @@ function createBar(percent) { const size = 10; const filled = Math.round(percent
 function getMainMenu() {
     const embed = new EmbedBuilder()
         .setTitle(`${EMOJI_MAP["BotLogo"]} Planter Tracker`)
-        .setDescription('"Harvest -> Track -> Wait -> Repeat"\n\nSelect a planter to start tracking, or check the Book Manual.')
+        .setDescription('"Harvest -> Track -> Wait -> Repeat"\n\nSelect a planter to start tracking, or browse the menus below.')
         .setColor('#f1c40f');
     const menu = new StringSelectMenuBuilder().setCustomId('sel_p').setPlaceholder('Choose a Planter...').addOptions(Object.keys(planterData).map(n=>{
         const eId = EMOJI_MAP[n]?.match(/\d+/)?.[0]; return {label:n, value:n, emoji: eId};
     }));
     const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('sum').setLabel('Summary').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('guide').setLabel('Book Manual').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('res').setLabel('Reset All').setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId('enyc').setLabel('Encyclopedia').setStyle(ButtonStyle.Primary), // ✨ Moved to Button!
+        new ButtonBuilder().setCustomId('guide').setLabel('Manual').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('res').setLabel('Reset').setStyle(ButtonStyle.Danger)
     );
     return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu), buttons] };
 }
@@ -143,7 +144,6 @@ function getEncyclopediaPages() {
         
         planterData[pName].forEach(drop => {
             const dEmoji = EMOJI_MAP[drop.dropKey] || "";
-            // Fixed: Now displays correctly as "Days"
             desc += `${dEmoji} **${drop.label}**\n⏳ Cooldown: ${drop.cd} Days\n📍 Field: ${formatField(drop.field)}\n🌱 Type: ${drop.type}\n\n`;
         });
         
@@ -208,9 +208,10 @@ client.on('interactionCreate', async (i) => {
         if (i.commandName === 'stats') {
             if (i.user.id !== OWNER_ID) return await i.reply({ content: "❌ Access Denied.", ephemeral: true });
             const logs = loadLogs();
-            const totalUsers = Object.keys(logs).filter(id => !isNaN(id)).length;
+            const userIds = Object.keys(logs).filter(id => !isNaN(id));
+            const totalUsers = userIds.length;
             let totalTrackers = 0;
-            Object.keys(logs).forEach(id => { if(!isNaN(id)) totalTrackers += Object.keys(logs[id]).length; });
+            userIds.forEach(id => { totalTrackers += Object.keys(logs[id]).length; });
 
             const statsEmbed = new EmbedBuilder()
                 .setTitle('📊 Global Bot Statistics')
@@ -220,15 +221,6 @@ client.on('interactionCreate', async (i) => {
                     { name: '🛰️ Status', value: 'Online (Oracle Cloud)', inline: false }
                 ).setColor('#f1c40f');
             return await i.reply({ embeds: [statsEmbed], ephemeral: true });
-        }
-
-        if (i.commandName === 'encyclopedia') {
-            const pages = getEncyclopediaPages();
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('page_prev_0').setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(true),
-                new ButtonBuilder().setCustomId('page_next_0').setEmoji('➡️').setStyle(ButtonStyle.Primary)
-            );
-            return await i.reply({ embeds: [pages[0]], components: [row] });
         }
 
         if (i.commandName === 'broadcast') {
@@ -274,6 +266,18 @@ client.on('interactionCreate', async (i) => {
 
     // --- 2. HANDLE BUTTONS & MENUS ---
     try {
+        // --- ENCYCLOPEDIA BUTTON (TRIGGER FROM MAIN MENU) ---
+        if (i.isButton() && i.customId === 'enyc') {
+            const pages = getEncyclopediaPages();
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('page_prev_0').setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(true),
+                new ButtonBuilder().setCustomId('page_next_0').setEmoji('➡️').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('back_to_main').setLabel('🏠 Home').setStyle(ButtonStyle.Secondary)
+            );
+            return await i.update({ embeds: [pages[0]], components: [row] });
+        }
+
+        // --- ENCYCLOPEDIA PAGINATION ---
         if (i.isButton() && i.customId.startsWith('page_')) {
             const parts = i.customId.split('_');
             const action = parts[1];
@@ -282,7 +286,8 @@ client.on('interactionCreate', async (i) => {
             let newIndex = action === 'next' ? currentIndex + 1 : currentIndex - 1;
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`page_prev_${newIndex}`).setEmoji('⬅️').setStyle(ButtonStyle.Primary).setDisabled(newIndex === 0),
-                new ButtonBuilder().setCustomId(`page_next_${newIndex}`).setEmoji('➡️').setStyle(ButtonStyle.Primary).setDisabled(newIndex === pages.length - 1)
+                new ButtonBuilder().setCustomId(`page_next_${newIndex}`).setEmoji('➡️').setStyle(ButtonStyle.Primary).setDisabled(newIndex === pages.length - 1),
+                new ButtonBuilder().setCustomId('back_to_main').setLabel('🏠 Home').setStyle(ButtonStyle.Secondary)
             );
             return await i.update({ embeds: [pages[newIndex]], components: [row] });
         }
