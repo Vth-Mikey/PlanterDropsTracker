@@ -24,7 +24,10 @@ const commands = [
         ), // <--- Notice the closing parenthesis and comma here!
     new SlashCommandBuilder()
         .setName('serverlist')
-        .setDescription('View all servers the bot is currently in (Owner Only)')
+        .setDescription('View all servers the bot is currently in (Owner Only)'),
+    new SlashCommandBuilder()
+        .setName('userlist')
+        .setDescription('View all unique users in the bot database (Owner Only)')
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);

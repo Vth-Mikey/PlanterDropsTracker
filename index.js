@@ -305,6 +305,42 @@ client.on('interactionCreate', async (i) => {
 
             return await i.reply({ embeds: [embed], ephemeral: true });
         }
+        
+        // --- USER LIST COMMAND (OWNER ONLY) ---
+        if (i.commandName === 'userlist') {
+            const OWNER_ID = '745969345749975097'; 
+
+            if (i.user.id !== OWNER_ID) {
+                return await i.reply({ content: "❌ **Access Denied.**", ephemeral: true });
+            }
+
+            await i.deferReply({ ephemeral: true });
+
+            const logs = loadLogs();
+            const userIds = Object.keys(logs);
+
+            if (userIds.length === 0) {
+                return await i.editReply("⚠️ No users found in the database.");
+            }
+
+            // Fetch the actual usernames for each ID
+            const userDisplayList = await Promise.all(userIds.map(async (id, index) => {
+                try {
+                    const user = await client.users.fetch(id);
+                    return `**${index + 1}.** ${user.tag} \`(${id})\``;
+                } catch {
+                    return `**${index + 1}.** Unknown User \`(${id})\``;
+                }
+            }));
+
+            const embed = new EmbedBuilder()
+                .setTitle('👥 Bot User Directory')
+                .setDescription(userDisplayList.join('\n'))
+                .setColor('#3498db')
+                .setFooter({ text: `Total Unique Users: ${userIds.length}` });
+
+            return await i.editReply({ embeds: [embed] });
+        }
 
     } // <--- Notice how this closing brace is now at the very end of all the commands!
 
