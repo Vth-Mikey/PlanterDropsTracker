@@ -14,17 +14,17 @@ const commands = [
     new SlashCommandBuilder()
         .setName('encyclopedia')
         .setDescription('Browse a book-style guide of all planter drops'),
-        new SlashCommandBuilder()
+    new SlashCommandBuilder()
         .setName('broadcast')
         .setDescription('Send a DM to all bot users (Owner Only)')
         .addStringOption(option => 
             option.setName('message')
                 .setDescription('The announcement message to send')
-                .setRequired(true),
-            new SlashCommandBuilder()
+                .setRequired(true)
+        ), // <--- Notice the closing parenthesis and comma here!
+    new SlashCommandBuilder()
         .setName('serverlist')
         .setDescription('View all servers the bot is currently in (Owner Only)')
-        )// 📖 The new command!
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
