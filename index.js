@@ -183,7 +183,7 @@ client.once('ready', () => { console.log(`✅ Online: ${client.user.tag}`); setI
 client.on('interactionCreate', async (i) => {
     const u = i.user.id;
 
-    // --- 1. HANDLE SLASH COMMANDS ---
+        // --- 1. HANDLE SLASH COMMANDS ---
     if (i.isChatInputCommand()) {
         
         // --- LOGBOOK COMMAND ---
@@ -247,8 +247,46 @@ client.on('interactionCreate', async (i) => {
             
             return await i.reply({ embeds: [pages[0]], components: [row] });
         }
-    }
-    
+
+        // --- BROADCAST COMMAND (OWNER ONLY) ---
+        if (i.commandName === 'broadcast') {
+            const OWNER_ID = '745969345749975097'; 
+
+            if (i.user.id !== OWNER_ID) {
+                return await i.reply({ content: "❌ **Access Denied:** Only the bot owner can send broadcasts.", ephemeral: true });
+            }
+
+            // We defer the reply because sending DMs to multiple people might take a few seconds
+            await i.deferReply({ ephemeral: true });
+
+            const messageToDeliver = i.options.getString('message');
+            const logs = loadLogs();
+            const userIds = Object.keys(logs); // Gets every unique user ID from the database
+
+            if (userIds.length === 0) {
+                return await i.editReply({ content: "⚠️ No users found in the database to message." });
+            }
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const userId of userIds) {
+                try {
+                    const user = await client.users.fetch(userId);
+                    await user.send(`📢 **Planter Tracker Update:**\n\n${messageToDeliver}`);
+                    successCount++;
+                } catch (error) {
+                    // This happens if a user has DMs disabled or blocked the bot
+                    failCount++;
+                }
+            }
+
+            return await i.editReply({ content: `✅ **Broadcast Complete!**\n📬 Delivered to: ${successCount} users\n❌ Failed: ${failCount} users (DMs closed)` });
+        }
+
+    } // <--- Notice how this closing brace is now at the very end of all the commands!
+
+            
     // --- 2. HANDLE BUTTONS & MENUS ---
     try {
         // --- ENCYCLOPEDIA PAGINATION ---

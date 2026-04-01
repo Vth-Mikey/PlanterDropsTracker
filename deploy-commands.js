@@ -13,7 +13,15 @@ const commands = [
         .setDescription('View global bot statistics (Owner Only)'),
     new SlashCommandBuilder()
         .setName('encyclopedia')
-        .setDescription('Browse a book-style guide of all planter drops') // 📖 The new command!
+        .setDescription('Browse a book-style guide of all planter drops'),
+        new SlashCommandBuilder()
+        .setName('broadcast')
+        .setDescription('Send a DM to all bot users (Owner Only)')
+        .addStringOption(option => 
+            option.setName('message')
+                .setDescription('The announcement message to send')
+                .setRequired(true)
+        )// 📖 The new command!
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
