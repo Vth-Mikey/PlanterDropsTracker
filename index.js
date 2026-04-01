@@ -327,7 +327,7 @@ client.on('interactionCreate', async (i) => {
             const userDisplayList = await Promise.all(userIds.map(async (id, index) => {
                 try {
                     const user = await client.users.fetch(id);
-                    return `**${index + 1}.** ${user.tag} \`(${id})\``;
+                    return `**${index + 1}.** <@${id}> | \`${id}\``;
                 } catch {
                     return `**${index + 1}.** Unknown User \`(${id})\``;
                 }
