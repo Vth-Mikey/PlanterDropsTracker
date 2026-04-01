@@ -20,7 +20,10 @@ const commands = [
         .addStringOption(option => 
             option.setName('message')
                 .setDescription('The announcement message to send')
-                .setRequired(true)
+                .setRequired(true),
+            new SlashCommandBuilder()
+        .setName('serverlist')
+        .setDescription('View all servers the bot is currently in (Owner Only)')
         )// 📖 The new command!
 ].map(command => command.toJSON());
 

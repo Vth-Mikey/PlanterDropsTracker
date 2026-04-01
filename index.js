@@ -283,6 +283,28 @@ client.on('interactionCreate', async (i) => {
 
             return await i.editReply({ content: `✅ **Broadcast Complete!**\n📬 Delivered to: ${successCount} users\n❌ Failed: ${failCount} users (DMs closed)` });
         }
+        
+                // --- SERVER LIST COMMAND (OWNER ONLY) ---
+        if (i.commandName === 'serverlist') {
+            const OWNER_ID = '745969345749975097'; 
+
+            if (i.user.id !== OWNER_ID) {
+                return await i.reply({ content: "❌ **Access Denied:** Only the bot owner can view the server list.", ephemeral: true });
+            }
+
+            // Map through the bot's cache to get server names and member counts
+            const serverList = client.guilds.cache.map((guild, index) => {
+                return `**${index + 1}.** ${guild.name} \`[${guild.memberCount} members]\``;
+            }).join('\n');
+
+            const embed = new EmbedBuilder()
+                .setTitle('🌐 Connected Servers')
+                .setDescription(serverList || "I am not in any servers right now.")
+                .setColor('#2ecc71')
+                .setFooter({ text: `Total Servers: ${client.guilds.cache.size}` });
+
+            return await i.reply({ embeds: [embed], ephemeral: true });
+        }
 
     } // <--- Notice how this closing brace is now at the very end of all the commands!
 
